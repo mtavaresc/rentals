@@ -1,14 +1,12 @@
-import os
-from datetime import date, datetime
+from datetime import datetime
 from math import ceil
 
-import pandas as pd
 from selenium.webdriver import Chrome, ChromeOptions
-from model import Base, Session, engine, Rentals
+
+from model import Session, Rentals
 
 begin = datetime.now().replace(microsecond=0)
 
-Base.metadata.create_all(engine)
 session = Session()
 
 options = ChromeOptions()
@@ -16,10 +14,14 @@ options.add_argument('--headless')
 driver = Chrome('chromedriver', options=options)
 driver.set_page_load_timeout(60 * 5)  # for slow internet
 
-max_value = 1100
+# Parameters
+max_value = 1300
 min_bed = 2
 min_bath = 2
 min_lot = 1
+neighbours = ['Sapiranga', 'Passaré', 'Messejana', 'Cidade dos Funcionários', 'Cambeba',
+              'Engenheiro Luciano Cavalcante', 'Cajazeiras', 'Guararapes', 'Água Fria',
+              'Parque Iracema', 'José de Alencar']
 
 url = f'https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/aluguel/apartamentos' \
       f'?bas={min_bath}&gsp={min_lot}&pe={max_value}&ros={min_bed}'
@@ -28,17 +30,16 @@ driver.get(url)
 total = driver.find_element_by_class_name('counter').text
 total = int(total.split()[4].replace('.', ''))
 pages = ceil(total / 50)
+f = 0
+all_id = [item.id for item in session.query(Rentals).all()]
 
-neighbours = ['Sapiranga', 'Passaré', 'Messejana', 'Cidade dos Funcionários', 'Cambeba',
-              'Engenheiro Luciano Cavalcante', 'Cajazeiras', 'Guararapes', 'Água Fria']
-data = []
 for page in range(1, pages + 1):
     driver.get(f'{url}&o={page}')
 
     items = driver.find_elements_by_class_name('item')
     for item in items:
         item_id = item.get_attribute('data-list_id')
-        if item_id:
+        if item_id and item_id not in all_id:
             neighbour = driver.find_element_by_xpath(f'//*[@id="{item_id}"]/div[2]/div[2]/p[1]').text
             neighbour = neighbour.split(',')[1].strip()
             if neighbour in neighbours:
@@ -69,18 +70,15 @@ for page in range(1, pages + 1):
                 print(f'Lots: {lots}')
                 print(f'Price: R$ {price}')
                 print(f'Neighbour: {neighbour}')
-                data.append([link, bedrooms, area, lots, neighbour, condominium, price, condominium + price])
+                f += 1
                 session.merge(Rentals(item_id, link, bedrooms, area, lots, neighbour, condominium, price))
                 session.commit()
 
 driver.quit()
 session.close()
 
-df = pd.DataFrame(data, columns=['Link', 'Bedrooms', 'Area', 'Lots', 'Neighbour', 'Condominium', 'Price', 'Total'])
-df.to_csv(os.path.join('data', f'{date.today()}.csv'), index=False)
-
 end = datetime.now().replace(microsecond=0)
 print(f'\n\n**********')
 print(f'Searched: {total}')
-print(f'Filtered: {len(data)}')
+print(f'Filtered: {f}')
 print(f'Elapsed time: {end - begin}')

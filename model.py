@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, create_engine
+from datetime import date
+
+from sqlalchemy import Column, Integer, String, Float, Date, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -18,8 +20,9 @@ class Rentals(Base):
     area = Column(Integer)
     lots = Column(Integer)
     neighbour = Column(String(50))
-    condominium = Column(DECIMAL(11, 2))
-    price = Column(DECIMAL(11, 2))
+    condominium = Column(Float(11, 2))
+    price = Column(Float(11, 2))
+    catch_at = Column(Date, default=date.today(), onupdate=date.today())
 
     def __init__(self, item, link, bed, area, lots, neighbour, condominium, price):
         self.id = item
