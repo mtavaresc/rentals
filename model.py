@@ -17,11 +17,11 @@ class Rentals(Base):
     neighbour = Column(String(50))
     price = Column(Float(11, 2))
     condominium = Column(Float(11, 2))
-    total = Column(Float(11, 2), default=price + condominium)
+    total = Column(Float(11, 2))
     favorite = Column(Boolean, default=False)
     catch_at = Column(Date, default=date.today(), onupdate=date.today())
 
-    def __init__(self, item, link, bed, area, lots, neighbour, condominium, price):
+    def __init__(self, item, link, bed, area, lots, neighbour, condominium, price, total):
         self.id = item
         self.link = link
         self.bedroom = bed
@@ -30,6 +30,7 @@ class Rentals(Base):
         self.neighbour = neighbour
         self.condominium = condominium
         self.price = price
+        self.total = total
 
     @staticmethod
     def clean():

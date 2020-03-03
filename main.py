@@ -1,24 +1,15 @@
 from datetime import datetime
 from math import ceil
 
-from selenium.webdriver import Chrome, ChromeOptions
+import requests
+from bs4 import BeautifulSoup
 
 from model import Session, Rentals
-import os
 
 begin = datetime.now().replace(microsecond=0)
-
 session = Session()
 
-# Clean db when favorite is false
-Rentals.clean()
-
-options = ChromeOptions()
-options.add_argument('--headless')
-driver = Chrome(os.path.join(os.getcwd(), 'chromedriver'), options=options)
-driver.set_page_load_timeout(60 * 5)  # for slow internet
-
-# Parameters
+# Input Parameters
 max_value = 1300
 min_bed = 2
 min_bath = 2
@@ -27,63 +18,58 @@ neighborhoods = ['Sapiranga', 'Passaré', 'Messejana', 'Cidade dos Funcionários
                  'Engenheiro Luciano Cavalcante', 'Cajazeiras', 'Salinas', 'Água Fria',
                  'Parque Iracema', 'José de Alencar']
 
-# https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/venda/casas
-# https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/venda/apartamentos
-# https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/aluguel/apartamentos
 url = f'https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/aluguel/apartamentos' \
       f'?bas={min_bath}&gsp={min_lot}&pe={max_value}&ros={min_bed}'
-
-driver.get(url)
-total = driver.find_element_by_class_name('counter').text
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                         'AppleWebKit/537.36 (KHTML, like Gecko) '
+                         'Chrome/80.0.3987.122 '
+                         'Safari/537.36'}
+results = requests.get(url, headers=headers)
+soup = BeautifulSoup(results.text, 'html.parser')
+total = soup.find('span', class_='counter').text
 total = int(total.split()[4].replace('.', ''))
 pages = ceil(total / 50)
 f = 0
 
 for page in range(1, pages + 1):
-    driver.get(f'{url}&o={page}')
+    re = requests.get(f'{url}&o={page}', headers=headers)
+    s = BeautifulSoup(re.text, 'html.parser')
 
-    items = driver.find_elements_by_class_name('item')
+    items = s.find_all('li', class_='item')
     for item in items:
-        item_id = item.get_attribute('data-list_id')
+        item_id = item.get('data-list_id', None)
         if item_id:
-            neighborhood = driver.find_element_by_xpath(f'//*[@id="{item_id}"]/div[2]/div[2]/p[1]').text
+            neighborhood = item.find('p', class_='text detail-region').text
             neighborhood = neighborhood.split(',')[1].strip()
-            link = driver.find_element_by_id(item_id).get_attribute('href')
+
+            link = item.find(id=item_id).get('href')
             if neighborhood in neighborhoods:
-                details = driver.find_element_by_xpath(f'//*[@id="{item_id}"]/div[2]/div[1]/p').text
-                bedrooms = int(
-                    details.split(' | ')[[i for i, s in enumerate(details.split(' | ')) if 'quartos' in s][0]].split(
-                        ' ')[0]) if len(
-                    [i for i, s in enumerate(details.split(' | ')) if 'quartos' in s]) == 1 else 0
-                area = int(
-                    details.split(' | ')[[i for i, s in enumerate(details.split(' | ')) if 'm²' in s][0]].split(' ')[
-                        0]) if len(
-                    [i for i, s in enumerate(details.split(' | ')) if 'm²' in s]) == 1 else 0
-                condominium = int(
-                    details.split(' | ')[[i for i, s in enumerate(details.split(' | ')) if 'Condomínio' in s][0]].split(
-                        ' ')[2]) if len(
-                    [i for i, s in enumerate(details.split(' | ')) if 'Condomínio' in s]) == 1 else 0
-                lots = int(
-                    details.split(' | ')[[i for i, s in enumerate(details.split(' | ')) if 'vaga' in s][0]].split(' ')[
-                        0]) if len([i for i, s in enumerate(details.split(' | ')) if 'vaga' in s]) == 1 else 0
-                price = driver.find_element_by_xpath(f'//*[@id="{item_id}"]/div[3]/p').text
+                d = item.find('p', class_='text detail-specific').text.strip()
+                beds = int(d.split(' | ')[[i for i, v in enumerate(d.split(' | ')) if 'quartos' in v][0]].split(
+                    ' ')[0]) if len([i for i, v in enumerate(d.split(' | ')) if 'quartos' in v]) == 1 else 0
+                area = int(d.split(' | ')[[i for i, v in enumerate(d.split(' | ')) if 'm²' in v][0]].split(' ')[
+                               0]) if len([i for i, v in enumerate(d.split(' | ')) if 'm²' in v]) == 1 else 0
+                cond = int(d.split(' | ')[[i for i, v in enumerate(d.split(' | ')) if 'Condomínio' in v][0]].split(
+                    ' ')[2]) if len([i for i, v in enumerate(d.split(' | ')) if 'Condomínio' in v]) == 1 else 0
+                lots = int(d.split(' | ')[[i for i, v in enumerate(d.split(' | ')) if 'vaga' in v][0]].split(' ')[
+                               0]) if len([i for i, v in enumerate(d.split(' | ')) if 'vaga' in v]) == 1 else 0
+                price = item.find('p', class_='OLXad-list-price').text.strip()
                 price = int(price.split(' ')[1].replace('.', ''))
 
                 print(f'\n#{f + 1}\n{link}')
-                print(f'Bedrooms: {bedrooms}')
+                print(f'Bedrooms: {beds}')
                 print(f'Area: {area} m²')
                 print(f'Lots: {lots}')
                 print(f'Price: R$ {price:,.2f}')
-                print(f'Condominium: R$ {condominium}')
+                print(f'Condominium: R$ {cond}')
                 print(f'Neighborhood: {neighborhood}')
                 f += 1
-                session.merge(Rentals(item_id, link, bedrooms, area, lots, neighborhood, condominium, price))
+                session.merge(Rentals(item_id, link, beds, area, lots, neighborhood, cond, price, price + cond))
                 session.commit()
 
-driver.quit()
 session.close()
-
 end = datetime.now().replace(microsecond=0)
+
 print(f'\n\n**********')
 print(f'Searched: {total}')
 print(f'Filtered: {f}')
