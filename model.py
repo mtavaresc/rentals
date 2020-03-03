@@ -1,14 +1,9 @@
 from datetime import date
 
-from sqlalchemy import Column, Integer, String, Float, Date, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Column, Integer, String, Float, Date, Boolean
+from base import Base, Session
 
-engine = create_engine('sqlite:///db.sqlite3')
-
-Session = sessionmaker(bind=engine)
-
-Base = declarative_base()
+session = Session()
 
 
 class Rentals(Base):
@@ -20,8 +15,10 @@ class Rentals(Base):
     area = Column(Integer)
     lots = Column(Integer)
     neighbour = Column(String(50))
-    condominium = Column(Float(11, 2))
     price = Column(Float(11, 2))
+    condominium = Column(Float(11, 2))
+    total = Column(Float(11, 2), default=price + condominium)
+    favorite = Column(Boolean, default=False)
     catch_at = Column(Date, default=date.today(), onupdate=date.today())
 
     def __init__(self, item, link, bed, area, lots, neighbour, condominium, price):
@@ -33,3 +30,8 @@ class Rentals(Base):
         self.neighbour = neighbour
         self.condominium = condominium
         self.price = price
+
+    @staticmethod
+    def clean():
+        session.query(Rentals).filter_by(favorite=False).delete()
+        session.commit()
