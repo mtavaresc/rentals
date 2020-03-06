@@ -10,7 +10,7 @@ begin = datetime.now().replace(microsecond=0)
 session = Session()
 
 # Input Parameters
-max_value = 1300
+max_value = 1500
 min_bed = 2
 min_bath = 2
 min_lot = 1
