@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Column, Integer, String, Float, Date, Boolean
+from sqlalchemy import Column, Integer, String, Float, Date, Boolean, ForeignKey
 from base import Base, Session
 
 session = Session()
@@ -34,5 +34,17 @@ class Rentals(Base):
 
     @staticmethod
     def clean():
+        for rental_id in session.query(Rentals.id).filter_by(favorite=False).all():
+            session.add(BlackList(rental_id.id))
+            session.commit()
         session.query(Rentals).filter_by(favorite=False).delete()
         session.commit()
+
+
+class BlackList(Base):
+    __tablename__ = 'black_list'
+
+    id = Column(Integer, ForeignKey('rentals.id'), primary_key=True, nullable=False)
+
+    def __init__(self, rental_id):
+        self.id = rental_id
