@@ -15,14 +15,14 @@ Rentals.clean()
 black_list = session.query(BlackList.id).all()
 
 # Input Parameters
-max_value = 1500
+max_value = 230000
 min_bed = 2
 min_bath = 2
 min_lot = 1
-neighborhoods = ['Sapiranga', 'Messejana', 'Cidade dos Funcionários', 'Cambeba', 'Engenheiro Luciano Cavalcante',
-                 'Água Fria', 'Parque Iracema', 'Alagadi']
+neighborhoods = ('Cidade dos Funcionários', 'Cambeba', 'Engenheiro Luciano Cavalcante', 'Parque Iracema',
+                 'Parque Manibura')
 
-url = f'https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/aluguel/apartamentos' \
+url = f'https://ce.olx.com.br/fortaleza-e-regiao/fortaleza/imoveis/venda/apartamentos' \
       f'?bas={min_bath}&gsp={min_lot}&pe={max_value}&ros={min_bed}'
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                          'AppleWebKit/537.36 (KHTML, like Gecko) '

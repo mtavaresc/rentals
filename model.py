@@ -35,7 +35,7 @@ class Rentals(Base):
     @staticmethod
     def clean():
         for rental_id in session.query(Rentals.id).filter_by(favorite=False).all():
-            session.add(BlackList(rental_id.id))
+            session.merge(BlackList(rental_id.id))
             session.commit()
         session.query(Rentals).filter_by(favorite=False).delete()
         session.commit()
